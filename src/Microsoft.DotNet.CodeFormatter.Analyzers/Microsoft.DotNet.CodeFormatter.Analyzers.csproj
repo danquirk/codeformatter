@@ -90,26 +90,12 @@
     <Compile Include="ProvideExplicitVariableTypeFixer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ResourceHelper.cs" />
-    <Compile Include="Wintellect.Analyzers\Design\AssemblyAttributeAnalyzer.cs" />
-    <Compile Include="Wintellect.Analyzers\Design\CatchBlocksShouldRethrowAnalyzer.cs" />
-    <Compile Include="Wintellect.Analyzers\DiagnosticIds.cs" />
-    <Compile Include="Wintellect.Analyzers\Documentation\ExceptionDocumentationMissingAnalyzer.cs" />
-    <Compile Include="Wintellect.Analyzers\Documentation\SuppressionMessageMissingJustificationAnalyzer.cs" />
-    <Compile Include="Wintellect.Analyzers\Extensions\ContextExtensions.cs" />
-    <Compile Include="Wintellect.Analyzers\Extensions\NodeExtensions.cs" />
-    <Compile Include="Wintellect.Analyzers\Extensions\SymbolExtensions.cs" />
-    <Compile Include="Wintellect.Analyzers\Formatting\CodeFixes\IfAndElseMustHaveBracesCodeFixProvider.cs" />
-    <Compile Include="Wintellect.Analyzers\Formatting\IfAndElseMustHaveBracesAnalyzer.cs" />
-    <Compile Include="Wintellect.Analyzers\Helpers\SyntaxFactoryHelper.cs" />
-    <Compile Include="Wintellect.Analyzers\Performance\AvoidCallingMethodsWithParamArgsInLoopsAnalyzer.cs" />
-    <Compile Include="Wintellect.Analyzers\Resources.Designer.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
-    <EmbeddedResource Include="Wintellect.Analyzers\Resources.resx" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Microsoft.DotNet.CodeFormatting\Microsoft.DotNet.CodeFormatting.csproj">
