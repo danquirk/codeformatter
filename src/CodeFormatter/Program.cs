@@ -121,7 +121,14 @@ namespace CodeFormatter
 
         private static async Task<int> RunFormatAsync(FormatOptions options, CancellationToken cancellationToken)
         {
-            var engine = FormattingEngine.Create(OptionsHelper.DefaultCompositionAssemblies);
+            var assemblies = OptionsHelper.DefaultCompositionAssemblies;
+            if (options.AnalyzerListFile != null && options.AnalyzerListText != null && options.AnalyzerListText.Count() > 0)
+            {
+                var analyzerAssemblies = options.AnalyzerListText.Select(analyzerPath => Assembly.LoadFile(analyzerPath));
+                assemblies = assemblies.Concat(analyzerAssemblies).ToArray();
+            }
+
+            var engine = FormattingEngine.Create(assemblies);
 
             var configBuilder = ImmutableArray.CreateBuilder<string[]>();
             configBuilder.Add(options.PreprocessorConfigurations.ToArray());            
@@ -132,11 +139,6 @@ namespace CodeFormatter
             engine.AllowTables = options.DefineDotNetFormatter;
             engine.FileNames = options.FileFilters.ToImmutableArray();
             engine.CopyrightHeader = options.CopyrightHeaderText;
-
-            if(options.AnalyzerListFile != null && options.AnalyzerListText != null && options.AnalyzerListText.Count() > 0)
-            {
-                engine.AddAnalyzers(options.AnalyzerListText);
-            }
 
             // Analyzers will hydrate rule enabled/disabled settings
             // directly from the options referenced by file path

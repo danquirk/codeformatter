@@ -23,6 +23,5 @@ namespace Microsoft.DotNet.CodeFormatting
         void ToggleRuleEnabled(IRuleMetadata ruleMetaData, bool enabled);
         Task FormatSolutionAsync(Solution solution, bool useAnalyzers, CancellationToken cancellationToken);
         Task FormatProjectAsync(Project project, bool useAnalyzers, CancellationToken cancellationToken);
-        void AddAnalyzers(ImmutableArray<string> analyzerListText);
     }
 }

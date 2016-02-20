@@ -31,7 +31,7 @@ namespace Microsoft.DotNet.CodeFormatting
         private readonly FormattingOptions _options;
         private readonly IEnumerable<CodeFixProvider> _fixers;
         private readonly IEnumerable<IFormattingFilter> _filters;
-        private IEnumerable<DiagnosticAnalyzer> _analyzers;
+        private readonly IEnumerable<DiagnosticAnalyzer> _analyzers;
         private readonly IEnumerable<IOptionsProvider> _optionsProviders;
         private readonly IEnumerable<ExportFactory<ISyntaxFormattingRule, SyntaxRule>> _syntaxRules; 
         private readonly IEnumerable<ExportFactory<ILocalSemanticFormattingRule, LocalSemanticRule>> _localSemanticRules;
@@ -116,18 +116,6 @@ namespace Microsoft.DotNet.CodeFormatting
             }
 
             _diagnosticIdToFixerMap = CreateDiagnosticIdToFixerMap();
-        }
-
-        public void AddAnalyzers(ImmutableArray<string> analyzerList)
-        {
-            foreach (var assemblyPath in analyzerList)
-            {
-                var assembly = System.Reflection.Assembly.LoadFile(assemblyPath);
-                var analyzers = assembly.DefinedTypes
-                        .Where(ty => ty.BaseType == typeof(DiagnosticAnalyzer))
-                        .Select(ty => (DiagnosticAnalyzer)Activator.CreateInstanceFrom(ty.Assembly.Location, ty.FullName).Unwrap());
-                _analyzers = _analyzers.Concat(analyzers);
-            }
         }
 
         private IEnumerable<TRule> GetOrderedRules<TRule, TMetadata>(IEnumerable<ExportFactory<TRule, TMetadata>> rules)
@@ -243,7 +231,10 @@ namespace Microsoft.DotNet.CodeFormatting
 
         private async Task FormatProjectWithGlobalAnalyzersAsync(Workspace workspace, ProjectId projectId, CancellationToken cancellationToken)
         {
-            var analyzers = _analyzers.Where(a => a.SupportedDiagnostics.All(d => d.CustomTags.Contains(RuleType.GlobalSemantic)));
+            // assume analyzers with no custom tags are global to be maximally conservative
+            var analyzers = _analyzers.Where(a => {
+                return a.SupportedDiagnostics.All(d => d.CustomTags.Contains(RuleType.GlobalSemantic) || d.CustomTags == null || d.CustomTags.Count() == 0);
+            });
 
             // Since global analyzers can potentially conflict with each other, run them one by one.
             foreach (var analyzer in analyzers)
