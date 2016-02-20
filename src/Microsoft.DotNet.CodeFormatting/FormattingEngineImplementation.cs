@@ -31,14 +31,15 @@ namespace Microsoft.DotNet.CodeFormatting
         private readonly FormattingOptions _options;
         private readonly IEnumerable<CodeFixProvider> _fixers;
         private readonly IEnumerable<IFormattingFilter> _filters;
-        private readonly IEnumerable<DiagnosticAnalyzer> _analyzers;
+        private IEnumerable<DiagnosticAnalyzer> _analyzers;
         private readonly IEnumerable<IOptionsProvider> _optionsProviders;
-        private readonly IEnumerable<ExportFactory<ISyntaxFormattingRule, SyntaxRule>> _syntaxRules;
+        private readonly IEnumerable<ExportFactory<ISyntaxFormattingRule, SyntaxRule>> _syntaxRules; 
         private readonly IEnumerable<ExportFactory<ILocalSemanticFormattingRule, LocalSemanticRule>> _localSemanticRules;
         private readonly IEnumerable<ExportFactory<IGlobalSemanticFormattingRule, GlobalSemanticRule>> _globalSemanticRules;
         private readonly Stopwatch _watch = new Stopwatch();
         private readonly Dictionary<string, bool> _ruleEnabledMap = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
         private readonly ImmutableDictionary<string, CodeFixProvider> _diagnosticIdToFixerMap;
+        private CompilationWithAnalyzers _compilationWithAnalyzers;
 
         public ImmutableArray<string> CopyrightHeader
         {
@@ -241,28 +242,64 @@ namespace Microsoft.DotNet.CodeFormatting
 
         private async Task FormatWithAnalyzersCoreAsync(Workspace workspace, ProjectId projectId, IEnumerable<DiagnosticAnalyzer> analyzers, CancellationToken cancellationToken)
         {
-            var project = workspace.CurrentSolution.GetProject(projectId);
-            var diagnostics = await GetDiagnostics(project, analyzers, cancellationToken).ConfigureAwait(false);
+            var watch = new Stopwatch();
+            watch.Start();
 
-            var batchFixer = WellKnownFixAllProviders.BatchFixer;
-
-            var context = new FixAllContext(
-                project.Documents.First(), // TODO: Shouldn't this be the whole project?
-                new UberCodeFixer(_diagnosticIdToFixerMap),
-                FixAllScope.Project,
-                null,
-                diagnostics.Select(d => d.Id),
-                new FormattingEngineDiagnosticProvider(project, diagnostics),
-                cancellationToken);
-
-            var fix = await batchFixer.GetFixAsync(context).ConfigureAwait(false);
-            if (fix != null)
+            if (analyzers != null && analyzers.Count() != 0)
             {
-                foreach (var operation in await fix.GetOperationsAsync(cancellationToken).ConfigureAwait(false))
+                var project = workspace.CurrentSolution.GetProject(projectId);
+                var diagnostics = await GetDiagnostics(project, analyzers, cancellationToken).ConfigureAwait(false);
+
+                var batchFixer = WellKnownFixAllProviders.BatchFixer;
+
+                var resultText = "";
+                // TODO: make configurable
+                var resultPath = @"E:\CodeFormatterResults\";
+                var resultFile = project.FilePath.Substring(project.FilePath.LastIndexOf("\\")).Replace(".csproj", "_CodeFormatterResults.txt");
+
+                var linesOfCodeInProject = -1;
+                var allLines = project.Documents.Select(async doc =>
                 {
-                    operation.Apply(workspace, cancellationToken);
+                    var text = await doc.GetTextAsync();
+                    var lines = text.Lines.Count;
+                    return lines;
+                });
+                var totalLines = await Task.WhenAll(allLines);
+                linesOfCodeInProject += totalLines.Sum();
+
+                foreach (var a in analyzers)
+                {
+                    var diags = await _compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync(ImmutableArray.Create(a), cancellationToken);
+                    resultText += String.Format("{0}\t{1}\t{2}\t{3}\n", a.ToString(), project.Documents.Count(), linesOfCodeInProject, diags.Count());
+                    FormatLogger.WriteLine(String.Format("{0}\t{1}\r\n", a.ToString(), diags.Count()));
                 }
+
+                System.IO.File.WriteAllText(resultPath + "\\" + resultFile, resultText);
+
+                // TODO: disabling the application of fixes for now in order to speed up execution of analysis
+                /*
+                var context = new FixAllContext(
+                    project.Documents.First(), // TODO: Shouldn't this be the whole project?
+                    new UberCodeFixer(_diagnosticIdToFixerMap),
+                    FixAllScope.Project,
+                    null,
+                    diagnostics.Select(d => d.Id),
+                    new FormattingEngineDiagnosticProvider(project, diagnostics),
+                    cancellationToken);
+
+
+                var fix = await batchFixer.GetFixAsync(context).ConfigureAwait(false);
+                if (fix != null)
+                {
+                    foreach (var operation in await fix.GetOperationsAsync(cancellationToken).ConfigureAwait(false))
+                    {
+                        operation.Apply(project.Solution.Workspace, cancellationToken);
+                    }
+                }*/
             }
+
+            watch.Stop();
+            FormatLogger.WriteLine("Total time {0}", watch.Elapsed);
         }
         
         public void ToggleRuleEnabled(IRuleMetadata ruleMetaData, bool enabled)
@@ -389,6 +426,7 @@ namespace Microsoft.DotNet.CodeFormatting
             if (analyzersToRun.Any())
             {
                 var compilationWithAnalyzers = compilation.WithAnalyzers(analyzersToRun.ToImmutableArray(), analyzerOptions);
+                _compilationWithAnalyzers = compilationWithAnalyzers;   
                 return await compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync().ConfigureAwait(false);
             }
             else
