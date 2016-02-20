@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+﻿<?xml version="1.0"?>
 <package >
   <metadata>
     <id>CodeFormatter</id>
@@ -9,11 +9,11 @@
     <description>CodeFormatter tool that enforces default coding guidelines.</description>
     <copyright>Copyright © Microsoft Corporation</copyright>
     <dependencies>
-      <dependency id="Microsoft.CodeAnalysis" version="1.0.0-beta1-20141031-01" />
-      <dependency id="Microsoft.CodeAnalysis.CSharp.Workspaces" version="1.0.0-beta1-20141031-01" />
+      <dependency id="Microsoft.CodeAnalysis" version="42.42.42.42" />
+      <dependency id="Microsoft.CodeAnalysis.CSharp.Workspaces" version="42.42.42.42" />
       <dependency id="Microsoft.CodeAnalysis.Workspaces.Common" version="1.0.0-beta1-20141031-01" />
       <dependency id="Microsoft.Composition" version="1.0.0-beta1-20141031-01" />
-      <dependency id="System.Reflection.Metadata" version="1.0.0-beta1-20141031-01" />
+      <dependency id="System.Reflection.Metadata" version="1.2.0.0" />
     </dependencies>
   </metadata>
   <files>
