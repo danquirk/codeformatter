@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
@@ -101,11 +102,24 @@ namespace Microsoft.DotNet.CodeFormatter.Analyzers
             return new PerLanguageOption<bool>(analyzerName, "Enabled", defaultValue: true);
         }
 
-        internal static IEnumerable<string> AllAnalyzerNames = new string[] {
-            ExplicitThisAnalyzer.AnalyzerName,
-            OptimizeNamespaceImportsAnalyzer.AnalyzerName,
-            ProvideExplicitVariableTypeAnalyzer.AnalyzerName, 
-            UnwrittenWritableFieldAnalyzer.AnalyzerName
-        };
+        internal static IEnumerable<string> AllAnalyzerNames = GetAnalyzers();
+
+        private static IEnumerable<string> GetAnalyzers()
+        {
+            // TODO: remove hardcoded path
+            var analyzersProjectPath = @"E:\GitHub\codeformatter\src\Microsoft.DotNet.CodeFormatter.Analyzers";
+            if (Directory.Exists(analyzersProjectPath)) {                
+                var analyzerFiles = Directory.GetFiles(analyzersProjectPath, "*Analyzer.cs", SearchOption.AllDirectories);
+                return analyzerFiles.Select(file => file.Substring(0, file.Length - 3));
+            }
+            else {
+                return new string[] {
+                    ExplicitThisAnalyzer.AnalyzerName,
+                    OptimizeNamespaceImportsAnalyzer.AnalyzerName,
+                    ProvideExplicitVariableTypeAnalyzer.AnalyzerName,
+                    UnwrittenWritableFieldAnalyzer.AnalyzerName
+                };
+            }
+        }
     }
 }

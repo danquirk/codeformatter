@@ -118,6 +118,18 @@ namespace Microsoft.DotNet.CodeFormatting
             _diagnosticIdToFixerMap = CreateDiagnosticIdToFixerMap();
         }
 
+        public void AddAnalyzers(ImmutableArray<string> analyzerList)
+        {
+            foreach (var assemblyPath in analyzerList)
+            {
+                var assembly = System.Reflection.Assembly.LoadFile(assemblyPath);
+                var analyzers = assembly.DefinedTypes
+                        .Where(ty => ty.BaseType == typeof(DiagnosticAnalyzer))
+                        .Select(ty => (DiagnosticAnalyzer)Activator.CreateInstanceFrom(ty.Assembly.Location, ty.FullName).Unwrap());
+                _analyzers = _analyzers.Concat(analyzers);
+            }
+        }
+
         private IEnumerable<TRule> GetOrderedRules<TRule, TMetadata>(IEnumerable<ExportFactory<TRule, TMetadata>> rules)
             where TRule : IFormattingRule
             where TMetadata : IRuleMetadata

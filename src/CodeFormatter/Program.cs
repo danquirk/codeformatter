@@ -133,6 +133,10 @@ namespace CodeFormatter
             engine.FileNames = options.FileFilters.ToImmutableArray();
             engine.CopyrightHeader = options.CopyrightHeaderText;
 
+            if(options.AnalyzerListFile != null && options.AnalyzerListText != null && options.AnalyzerListText.Count() > 0)
+            {
+                engine.AddAnalyzers(options.AnalyzerListText);
+            }
 
             // Analyzers will hydrate rule enabled/disabled settings
             // directly from the options referenced by file path
