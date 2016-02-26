@@ -31,7 +31,7 @@ namespace Microsoft.DotNet.CodeFormatting
         private readonly FormattingOptions _options;
         private readonly IEnumerable<CodeFixProvider> _fixers;
         private readonly IEnumerable<IFormattingFilter> _filters;
-        private readonly IEnumerable<DiagnosticAnalyzer> _analyzers;
+        private IEnumerable<DiagnosticAnalyzer> _analyzers;
         private readonly IEnumerable<IOptionsProvider> _optionsProviders;
         private readonly IEnumerable<ExportFactory<ISyntaxFormattingRule, SyntaxRule>> _syntaxRules; 
         private readonly IEnumerable<ExportFactory<ILocalSemanticFormattingRule, LocalSemanticRule>> _localSemanticRules;
@@ -116,6 +116,35 @@ namespace Microsoft.DotNet.CodeFormatting
             }
 
             _diagnosticIdToFixerMap = CreateDiagnosticIdToFixerMap();
+        }
+
+        public void AddAnalyzers(ImmutableArray<string> analyzerList)
+        {
+            foreach (var assemblyPath in analyzerList)
+            {
+                var assembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                var analyzers = assembly.DefinedTypes
+                        .Where(ty => ty.BaseType == typeof(DiagnosticAnalyzer))
+                        .Select(ty => {
+                            try
+                            {
+                                return (DiagnosticAnalyzer)Activator.CreateInstanceFrom(ty.Assembly.Location, ty.FullName).Unwrap();
+                            }
+                            catch (Exception e)
+                            {
+                                // seen: MissingMethodException, can't find constructor
+                                //       ArgumentException, Type.ContainsGenericParameters is true.
+                                FormatLogger.WriteErrorLine(String.Format("Failed to load type {0} from assembly {1}: {2}", ty.FullName, assemblyPath, e.Message));
+                                return null;
+                            }
+                        }).Where(x => x != null);
+
+                if (analyzers.Count() == 0)
+                {
+                    FormatLogger.WriteErrorLine(String.Format("No analyzers loaded from assembly {0}", assemblyPath));
+                }
+                _analyzers = _analyzers.Concat(analyzers);
+            }
         }
 
         private IEnumerable<TRule> GetOrderedRules<TRule, TMetadata>(IEnumerable<ExportFactory<TRule, TMetadata>> rules)
