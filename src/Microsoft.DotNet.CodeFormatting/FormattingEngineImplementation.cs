@@ -273,8 +273,8 @@ namespace Microsoft.DotNet.CodeFormatting
                 foreach (var a in analyzers)
                 {
                     var diags = await _compilationWithAnalyzers.GetAnalyzerDiagnosticsAsync(ImmutableArray.Create(a), cancellationToken);
-                    resultText += String.Format("{0}\t{1}\t{2}\t{3}\n", a.ToString(), project.Documents.Count(), linesOfCodeInProject, diags.Count());
-                    FormatLogger.WriteLine(String.Format("{0}\t{1}\r\n", a.ToString(), diags.Count()));
+                    resultText += String.Format("{0}\t{1}\t{2}\t{3}\r\n", a.ToString(), project.Documents.Count(), linesOfCodeInProject, diags.Count());
+                    FormatLogger.WriteLine(String.Format("{0}\t{1}", a.ToString(), diags.Count()));
                 }
 
                 System.IO.File.WriteAllText(resultPath + "\\" + resultFile, resultText);
@@ -302,9 +302,9 @@ namespace Microsoft.DotNet.CodeFormatting
             }
 
             watch.Stop();
-            FormatLogger.WriteLine("Total time {0}", watch.Elapsed);
+            //FormatLogger.WriteLine("Total time {0}", watch.Elapsed);
         }
-        
+
         public void ToggleRuleEnabled(IRuleMetadata ruleMetaData, bool enabled)
         {
             _ruleEnabledMap[ruleMetaData.Name] = enabled;
