@@ -33,7 +33,7 @@ namespace Microsoft.DotNet.CodeFormatting
         private readonly FormattingOptions _options;
         private readonly IEnumerable<CodeFixProvider> _fixers;
         private readonly IEnumerable<IFormattingFilter> _filters;
-        private IEnumerable<DiagnosticAnalyzer> _analyzers;
+        private readonly IEnumerable<DiagnosticAnalyzer> _analyzers;
         private readonly IEnumerable<IOptionsProvider> _optionsProviders;
         private readonly IEnumerable<ExportFactory<ISyntaxFormattingRule, SyntaxRule>> _syntaxRules;
         private readonly IEnumerable<ExportFactory<ILocalSemanticFormattingRule, LocalSemanticRule>> _localSemanticRules;
@@ -650,11 +650,6 @@ namespace Microsoft.DotNet.CodeFormatting
             }
 
             return solution;
-        }
-
-        public void AddAnalyzers(ImmutableArray<DiagnosticAnalyzer> analyzers)
-        {
-            _analyzers = _analyzers.Concat(analyzers);
         }
     }
 }

@@ -130,35 +130,35 @@ namespace CodeFormatter
             }
         }
 
-        private static IAnalyzerAssemblyLoader _analyzerAssemblyLoader;
-        private static IAnalyzerAssemblyLoader AnalyzerAssemblyLoader {
-            get
-            {
-                if(_analyzerAssemblyLoader == null)
-                {
-                    // use Roslyn's existing simple loader, there're no special requirements for our usage
-                    var loaderAssembly = Assembly.Load((typeof(CommandLineProject)).Assembly.FullName);
-                    _analyzerAssemblyLoader = (IAnalyzerAssemblyLoader)Activator.CreateInstance(loaderAssembly.GetType("Microsoft.CodeAnalysis.SimpleAnalyzerAssemblyLoader"));
-                }
-                return _analyzerAssemblyLoader;
-            }
-        }
-
-        private static ImmutableArray<DiagnosticAnalyzer> LoadAnalyzersFromAssembly(string path, bool throwIfNoAnalyzersFound)
+        private static Assembly[] GetAnalyzerAssemblies(string path)
         {
-            var analyzerRef = new AnalyzerFileReference(path, AnalyzerAssemblyLoader);
-            var newAnalyzers = analyzerRef.GetAnalyzersForAllLanguages();
-            if (newAnalyzers.Count() == 0 && throwIfNoAnalyzersFound)
+            if(File.Exists(path))
             {
-                throw new Exception(String.Format("Specified analyzer assembly {0} contained no analyzers", analyzerRef.GetAssembly().FullName));
+                return new Assembly[] { Assembly.LoadFile(path) };
             }
-            return newAnalyzers;
+            else if(Directory.Exists(path))
+            {
+                var files = Directory.GetFiles(path, "*.dll");
+                return files.Select(file => Assembly.LoadFrom(file)).ToArray();
+            }
+            else
+            {
+                throw new Exception("Specificed analyzer path is invalid.");
+            }
         }
 
         private static async Task<int> RunAsync(CommandLineOptions options, CancellationToken cancellationToken)
         {
+            var analyzerAssemblies = new Assembly[] { };
+            if (options.AnalyzerListFile != null && options.AnalyzerListText != null && options.AnalyzerListText.Count() > 0)
+            {
+                // TODO: this technique doesn't seem to work for analyzers whose direct parent is a class in another assembly
+                analyzerAssemblies = options.AnalyzerListText
+                    .Select(path => GetAnalyzerAssemblies(path))
+                    .Aggregate((listA, listB) => listA.Concat(listB).ToArray());
+            }
             var assemblies = OptionsHelper.DefaultCompositionAssemblies;
-            var engine = FormattingEngine.Create(assemblies);
+            var engine = FormattingEngine.Create(assemblies.Concat(analyzerAssemblies));
 
             var configBuilder = ImmutableArray.CreateBuilder<string[]>();
             configBuilder.Add(options.PreprocessorConfigurations.ToArray());            
@@ -171,31 +171,6 @@ namespace CodeFormatter
             engine.CopyrightHeader = options.CopyrightHeaderText;
             engine.ApplyFixes = options.ApplyFixes;
             engine.LogOutputPath = options.LogOutputPath;
-
-            if (options.AnalyzerListFile != null && options.AnalyzerListText != null && options.AnalyzerListText.Count() > 0)
-            {
-                foreach (var analyzerPath in options.AnalyzerListText)
-                {
-                    if (File.Exists(analyzerPath))
-                    {
-                        var newAnalyzers = LoadAnalyzersFromAssembly(analyzerPath, true);
-                        engine.AddAnalyzers(newAnalyzers);
-                    }
-                    else if (Directory.Exists(analyzerPath))
-                    {
-                        var DLLs = Directory.GetFiles(analyzerPath, "*.dll");
-                        foreach (var dll in DLLs)
-                        {
-                            // allows specifying a folder that contains analyzers as well as non-analyzer DLLs without throwing
-                            var newAnalyzers = LoadAnalyzersFromAssembly(dll, false);
-                            if (newAnalyzers.Count() > 0)
-                            {
-                                engine.AddAnalyzers(newAnalyzers);
-                            }
-                        }
-                    }
-                }
-            }
 
             // Analyzers will hydrate rule enabled/disabled settings
             // directly from the options referenced by file path
